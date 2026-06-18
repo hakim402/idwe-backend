@@ -6,32 +6,33 @@ services:
     restart: unless-stopped
     env_file:
       - .env
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
+    # --- ADD THIS BLOCK BACK ---
     environment:
       POSTGRES_DB: ${DB_NAME}
       POSTGRES_USER: ${DB_USER}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
-    ports:
-      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    # REMOVED ports to prevent conflicts with your other projects
 
   redis:
     image: redis:alpine
     restart: unless-stopped
-    ports:
-      - "6379:6379"
+    # REMOVED ports to prevent conflicts
 
   web:
     build: .
     restart: unless-stopped
     env_file:
       - .env
-    command: gunicorn config.wsgi:application --bind 0.0.0.0:8000
+    # Optimized Gunicorn for production
+    command: gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 3 --threads 2
     volumes:
-      - static_volume:/app/staticfiles
-      - media_volume:/app/media
+      # Changed to bind mounts so Nginx can access them
+      - ./staticfiles:/app/staticfiles
+      - ./media:/app/media
     ports:
-      - "80:8000"
+      - "8000:8000"
     environment:
       DB_HOST: db
       DB_PORT: 5432
@@ -48,8 +49,8 @@ services:
       - .env
     command: celery -A config worker -l info
     volumes:
-      - static_volume:/app/staticfiles
-      - media_volume:/app/media
+      - ./staticfiles:/app/staticfiles
+      - ./media:/app/media
     environment:
       DB_HOST: db
       DB_PORT: 5432
@@ -66,8 +67,8 @@ services:
       - .env
     command: celery -A config beat -l info --scheduler django_celery_beat.schedulers:DatabaseScheduler
     volumes:
-      - static_volume:/app/staticfiles
-      - media_volume:/app/media
+      - ./staticfiles:/app/staticfiles
+      - ./media:/app/media
     environment:
       DB_HOST: db
       DB_PORT: 5432
@@ -79,5 +80,4 @@ services:
 
 volumes:
   postgres_data:
-  static_volume:
-  media_volume:
+  # Removed static_volume and media_volume since we are using bind mounts

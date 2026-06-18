@@ -1,31 +1,37 @@
-# 🚀 Django Backend Setup Guide
+# 🚀 Infinity Backend
 
-Welcome to the Django Backend Project.
+A production-ready Django REST Framework backend powered by:
 
-This guide will help you set up the project from scratch on Windows, macOS, or Linux.
+* Django
+* Django REST Framework
+* PostgreSQL
+* Redis
+* Celery Worker
+* Celery Beat
+* Gunicorn
+* Docker Compose
 
 ---
 
 # 📋 Prerequisites
 
-Before getting started, make sure you have installed:
+Before getting started, install:
 
-* Python 3.11+
+* Docker
+* Docker Compose
 * Git
-* Pip
-* Virtual Environment (venv)
-* Redis (for Celery background tasks)
 
 Verify installation:
 
 ```bash
-python --version
-pip --version
+docker --version
+docker compose version
+git --version
 ```
 
 ---
 
-# 1️⃣ Clone the Repository
+# 📥 Clone Repository
 
 ```bash
 git clone <repository-url>
@@ -34,63 +40,7 @@ cd infinity-backend
 
 ---
 
-# 2️⃣ Create Virtual Environment
-
-Create a dedicated Python virtual environment:
-
-```bash
-python -m venv venv
-```
-
----
-
-# 3️⃣ Activate Virtual Environment
-
-### Windows
-
-```bash
-venv\Scripts\activate
-```
-
-### macOS / Linux
-
-```bash
-source venv/bin/activate
-```
-
-You should now see:
-
-```bash
-(venv)
-```
-
-at the beginning of your terminal.
-
----
-
-# 4️⃣ Install Dependencies
-
-Install all required packages:
-
-```bash
-pip install -r requirements.txt
-```
-
-If `requirements.txt` does not exist:
-
-```bash
-pip install django djangorestframework
-```
-
-Generate it:
-
-```bash
-pip freeze > requirements.txt
-```
-
----
-
-# 5️⃣ Environment Variables
+# ⚙️ Environment Variables
 
 Create a `.env` file in the project root:
 
@@ -99,10 +49,10 @@ DEBUG=True
 
 SECRET_KEY=your-secret-key
 
-DB_NAME=database_name
-DB_USER=database_user
-DB_PASSWORD=database_password
-DB_HOST=localhost
+DB_NAME=infinity_db
+DB_USER=postgres
+DB_PASSWORD=password
+DB_HOST=db
 DB_PORT=5432
 
 EMAIL_HOST=smtp.gmail.com
@@ -114,81 +64,81 @@ EMAIL_USE_TLS=True
 FRONTEND_BASE_URL=http://localhost:3000
 ```
 
-Update values according to your environment.
+Update the values according to your environment.
 
 ---
 
-# 6️⃣ Database Setup
+# 🐳 Start Project
 
-Create migrations:
+Build and start all services:
 
 ```bash
-python manage.py makemigrations
+docker compose up -d --build
 ```
+
+Verify services:
+
+```bash
+docker compose ps
+```
+
+---
+
+# 🗄 Database Setup
 
 Apply migrations:
 
 ```bash
-python manage.py migrate
+docker compose exec web python manage.py migrate
+```
+
+Create admin user:
+
+```bash
+docker compose exec web python manage.py createsuperuser
 ```
 
 ---
 
-# 7️⃣ Create Superuser
+# 🌐 Access Application
 
-Create an admin account:
-
-```bash
-python manage.py createsuperuser
-```
-
-Follow the prompts.
-
----
-
-# 8️⃣ Run Development Server
-
-Default port:
-
-```bash
-python manage.py runserver
-```
-
-Custom port:
-
-```bash
-python manage.py runserver 8005
-```
-
-API will be available at:
+API:
 
 ```text
-http://127.0.0.1:8000/
+http://localhost:8000
 ```
 
-or
+Admin:
 
 ```text
-http://127.0.0.1:8005/
+http://localhost:8000/admin
 ```
 
 ---
 
-# 9️⃣ Project Structure
+# 🏗 Services
+
+| Service       | Description       |
+| ------------- | ----------------- |
+| web           | Django + Gunicorn |
+| db            | PostgreSQL        |
+| redis         | Redis             |
+| celery_worker | Background Tasks  |
+| celery_beat   | Scheduled Tasks   |
+
+---
+
+# 📂 Project Structure
 
 ```text
 infinity-backend/
 │
 ├── apps/
-│   ├── accounts/
-│   ├── tenants/
-│   ├── ...
-│
 ├── config/
-│   ├── settings.py
-│   ├── urls.py
-│   ├── celery.py
-│
+├── media/
+├── static/
+├── Dockerfile
+├── docker-compose.yml
 ├── requirements.txt
 ├── manage.py
 └── .env
@@ -196,363 +146,171 @@ infinity-backend/
 
 ---
 
-# 🔟 Creating a New App
+# 🔄 Development Workflow
 
-Create app inside `apps/` directory:
+## Code Changes
 
 ```bash
-python manage.py startapp accounts apps/accounts
-```
-
-Create:
-
-```text
-apps/__init__.py
-```
-
-Update:
-
-```python
-# apps/accounts/apps.py
-
-from django.apps import AppConfig
-
-class AccountsConfig(AppConfig):
-    default_auto_field = "django.db.models.BigAutoField"
-    name = "apps.accounts"
-```
-
-Add app to:
-
-```python
-INSTALLED_APPS = [
-    ...
-    "apps.accounts",
-]
+docker compose restart web
 ```
 
 ---
 
-# 1️⃣1️⃣ Celery & Redis Setup
-
-Celery is used for:
-
-* Email sending
-* Background jobs
-* Scheduled tasks
-* Notifications
-* Token cleanup jobs
-
----
-
-## Install Celery
+## Model Changes
 
 ```bash
-pip install celery redis
+docker compose exec web python manage.py makemigrations
+
+docker compose exec web python manage.py migrate
+
+docker compose restart
 ```
 
 ---
 
-# Windows Redis Setup
-
-## Option 1 (Recommended)
-
-Run Redis using Docker:
+## Static File Changes
 
 ```bash
-docker run -d --name redis -p 6379:6379 redis:7
-```
+docker compose exec web python manage.py collectstatic --noinput
 
-Start Redis:
-
-```bash
-docker start redis
-```
-
-Stop Redis:
-
-```bash
-docker stop redis
+docker compose restart web
 ```
 
 ---
 
-# macOS Redis Setup
-
-Install Redis:
+## Celery Changes
 
 ```bash
-brew install redis
-```
+docker compose restart celery_worker
 
-Start Redis:
-
-```bash
-brew services start redis
-```
-
-Stop Redis:
-
-```bash
-brew services stop redis
-```
-
-Restart Redis:
-
-```bash
-brew services restart redis
-```
-
-Verify Redis:
-
-```bash
-redis-cli ping
-```
-
-Expected output:
-
-```text
-PONG
+docker compose restart celery_beat
 ```
 
 ---
 
-# Celery Configuration
+## New Package Added
 
-Add to `settings.py`:
+After updating requirements.txt:
 
-```python
-CELERY_BROKER_URL = "redis://localhost:6379/0"
-CELERY_RESULT_BACKEND = "redis://localhost:6379/1"
+```bash
+docker compose build
 
-CELERY_ACCEPT_CONTENT = ["json"]
-CELERY_TASK_SERIALIZER = "json"
-CELERY_RESULT_SERIALIZER = "json"
-
-CELERY_TIMEZONE = "UTC"
-```
-
-Create:
-
-```text
-config/celery.py
-```
-
-```python
-import os
-
-from celery import Celery
-
-os.environ.setdefault(
-    "DJANGO_SETTINGS_MODULE",
-    "config.settings"
-)
-
-app = Celery("config")
-
-app.config_from_object(
-    "django.conf:settings",
-    namespace="CELERY"
-)
-
-app.autodiscover_tasks()
-```
-
-Update:
-
-```python
-# config/__init__.py
-
-from .celery import app as celery_app
-
-__all__ = ("celery_app",)
+docker compose up -d
 ```
 
 ---
 
-# Run Celery Worker
-
-### Windows
+## Dockerfile Changes
 
 ```bash
-celery -A config worker -l info --pool=solo
-```
+docker compose build --no-cache
 
-### macOS / Linux
-
-```bash
-celery -A config worker -l info
-```
-
-Stop worker:
-
-```text
-CTRL + C
+docker compose up -d
 ```
 
 ---
 
-# Daily Development Workflow
-
-### Terminal 1
-
-Run Django:
+## docker-compose.yml Changes
 
 ```bash
-python manage.py runserver
-```
+docker compose down
 
-### Terminal 2
-
-Run Redis:
-
-Windows:
-
-```bash
-docker start redis
-```
-
-macOS:
-
-```bash
-brew services start redis
-```
-
-### Terminal 3
-
-Run Celery:
-
-Windows:
-
-```bash
-celery -A config worker -l info --pool=solo
-```
-
-macOS:
-
-```bash
-celery -A config worker -l info
+docker compose up -d
 ```
 
 ---
 
-# Testing Celery
+# 🚀 Deployment Workflow
 
-Open Django shell:
+After pulling new code:
 
 ```bash
-python manage.py shell
-```
+git pull
 
-Run:
+docker compose build
 
-```python
-from apps.accounts.tasks import cleanup_expired_tokens
+docker compose up -d
 
-cleanup_expired_tokens.delay()
-```
+docker compose exec web python manage.py migrate
 
-Expected Celery output:
+docker compose exec web python manage.py collectstatic --noinput
 
-```text
-Task apps.accounts.tasks.cleanup_expired_tokens received
-Task apps.accounts.tasks.cleanup_expired_tokens succeeded
+docker compose restart
 ```
 
 ---
 
-# Running Tests
+# 🩺 Monitoring & Logs
 
-Run all tests:
+View all logs:
 
 ```bash
-pytest
+docker compose logs -f
 ```
 
-Run accounts tests only:
+View Django logs:
 
 ```bash
-pytest apps/accounts/tests -v
+docker compose logs -f web
 ```
 
-Generate coverage report:
+View Celery Worker logs:
 
 ```bash
-pytest --cov=apps.accounts --cov-report=term-missing
+docker compose logs -f celery_worker
+```
+
+View Celery Beat logs:
+
+```bash
+docker compose logs -f celery_beat
+```
+
+Check running containers:
+
+```bash
+docker compose ps
 ```
 
 ---
 
-# Useful Commands
-
-Create migrations:
+# 🧪 Running Tests
 
 ```bash
-python manage.py makemigrations
+docker compose exec web pytest
 ```
 
-Apply migrations:
+Run specific tests:
 
 ```bash
-python manage.py migrate
+docker compose exec web pytest apps/accounts/tests -v
 ```
 
-Collect static files:
+Coverage:
 
 ```bash
-python manage.py collectstatic
-```
-
-Create superuser:
-
-```bash
-python manage.py createsuperuser
-```
-
-Open Django shell:
-
-```bash
-python manage.py shell
+docker compose exec web pytest --cov=apps --cov-report=term-missing
 ```
 
 ---
 
-# Troubleshooting
-
-### Redis Connection Error
-
-Make sure Redis is running:
+# 🚨 Emergency Recovery
 
 ```bash
-redis-cli ping
-```
+docker compose down
 
-Expected:
+docker compose build --no-cache
 
-```text
-PONG
-```
+docker compose up -d
 
-### Celery Not Detecting Tasks
+docker compose exec web python manage.py migrate
 
-Restart the worker:
-
-```bash
-celery -A config worker -l info
-```
-
-### Migration Issues
-
-Reset migrations carefully:
-
-```bash
-python manage.py makemigrations
-python manage.py migrate
+docker compose exec web python manage.py collectstatic --noinput
 ```
 
 ---
 
-# Author
+# 👨‍💻 Author
 
 Infinity Solutions
 
@@ -561,7 +319,7 @@ Built with:
 * Django
 * Django REST Framework
 * PostgreSQL
-* Celery
 * Redis
-* SimpleJWT
-* Pytest
+* Celery
+* Gunicorn
+* Docker Compose

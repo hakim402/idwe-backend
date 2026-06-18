@@ -28,6 +28,7 @@ environ.Env.read_env(BASE_DIR / ".env")   # loads .env from project root
 SECRET_KEY           = env("SECRET_KEY")
 DEBUG                = env.bool("DEBUG", default=False)
 ALLOWED_HOSTS        = env.list("ALLOWED_HOSTS", default=[])
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 WSGI_APPLICATION     = "config.wsgi.application"
 ROOT_URLCONF         = "config.urls"
 DEFAULT_AUTO_FIELD   = "django.db.models.BigAutoField"
@@ -68,6 +69,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     "corsheaders.middleware.CorsMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -251,6 +253,7 @@ STATICFILES_DIRS = [BASE_DIR / "static"] if (BASE_DIR / "static").exists() else 
 
 MEDIA_URL  = "/media/"
 MEDIA_ROOT = env("MEDIA_ROOT", default=str(BASE_DIR / "media"))
+STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
 # ──────────────────────────────────────────────────────────────────────────────
 # SECURITY HEADERS (production only)
@@ -275,6 +278,8 @@ if not DEBUG:
 # ──────────────────────────────────────────────────────────────────────────────
 
 CORS_ALLOWED_ORIGINS  = env.list("CORS_ALLOWED_ORIGINS", default=[])
+# This ensures Django accepts POST requests from your frontend
+CSRF_TRUSTED_ORIGINS = env.list("CSRF_TRUSTED_ORIGINS", default=CORS_ALLOWED_ORIGINS + ['https://api.idwe.tech']) 
 CORS_ALLOW_CREDENTIALS = True
 CORS_PREFLIGHT_MAX_AGE = 86_400
 
